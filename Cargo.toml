@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 cgmath = "0.18.0"
+crossbeam = "0.8.4"
 glium = "*"

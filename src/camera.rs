@@ -4,6 +4,13 @@ use cgmath::{
 
 use crate::mat::Mat4;
 
+pub struct CamParams {
+    pub pos: Vector3<f32>,
+    pub ori: Quaternion<f32>,
+    pub fov: f32,
+    pub ar: f32,
+}
+
 /// Returns the view-projection matrix from the camera's position and orientation.
 pub fn camera_matrix(
     position: Vector3<f32>,
