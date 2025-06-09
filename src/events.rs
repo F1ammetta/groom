@@ -1,4 +1,9 @@
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Instant;
+
 use crate::input;
+use crate::phys::InstanceData;
 use crate::threading::PhysicsMessage;
 use crossbeam::channel::Receiver;
 use glium::VertexBuffer;
@@ -6,17 +11,20 @@ use glium::glutin::surface::WindowSurface;
 use glium::vertex::PerInstance;
 use glium::winit::event::{Event, WindowEvent};
 use glium::winit::event_loop::ActiveEventLoop;
+use glium::winit::keyboard::KeyCode;
 use glium::winit::window::Window;
 
 use crate::CamParams;
 
 pub fn handle<F: FnOnce(PerInstance)>(
+    l_t: &mut Instant,
     event: Event<()>,
     window_target: &ActiveEventLoop,
     window: &Window,
     display: &glium::Display<WindowSurface>,
     cam: &mut CamParams,
     physics_rx: &Receiver<PhysicsMessage>,
+    running: &Arc<AtomicBool>,
     draw_cb: F,
 ) {
     match event {
@@ -27,25 +35,30 @@ pub fn handle<F: FnOnce(PerInstance)>(
                 cam.ar = window_size.width as f32 / window_size.height as f32;
             }
             WindowEvent::CloseRequested => window_target.exit(),
-            WindowEvent::KeyboardInput {
-                device_id: _,
-                event,
-                is_synthetic: _,
-            } => {
+            WindowEvent::KeyboardInput { event, .. } => {
                 input::key_handle(event.physical_key, |vec| {
                     cam.pos += vec;
                 });
+                if event.physical_key == KeyCode::Escape {
+                    running.store(false, Ordering::SeqCst);
+                }
             }
             WindowEvent::RedrawRequested => {
                 // t = start.elapsed().as_secs_f32();
-                // dt = l_t.elapsed().as_secs_f32();
-                // l_t = Instant::now();
+                let dt = l_t.elapsed().as_secs_f32();
+                *l_t = Instant::now();
+
+                println!("{:.2} Fps", 1.0 / dt);
 
                 // (position, orientation) = rotate_around_origin_xz_dt(dt, position, orientation);
 
                 let message = physics_rx.recv().unwrap();
 
-                let instance_data = message.instance_data;
+                let instance_data = match message {
+                    PhysicsMessage::InstanceData(data) => data,
+                };
+
+                // let instance_data: Vec<InstanceData> = Vec::new();
 
                 // let instance_data = world.get_instance_data();
 
@@ -57,6 +70,7 @@ pub fn handle<F: FnOnce(PerInstance)>(
 
             _ => (),
         },
+
         Event::AboutToWait => {
             window.request_redraw();
         }

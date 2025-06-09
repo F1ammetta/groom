@@ -31,15 +31,14 @@ pub fn camera_matrix(
 
     let view = Matrix4::look_at_rh(Point3::from_vec(position), Point3::from_vec(target), up);
 
-    cgmath_to_mat4((projection * view).transpose())
+    cgmath_to_mat4(projection * view)
 }
 
 fn cgmath_to_mat4(m: Matrix4<f32>) -> Mat4 {
-    let cols = m.transpose(); // cgmath is column-major, you want column-major in [[f32; 4]; 4]
     let mut data = [[0.0; 4]; 4];
     for i in 0..4 {
         for j in 0..4 {
-            data[i][j] = cols[i][j];
+            data[i][j] = m[i][j];
         }
     }
     Mat4 { data }

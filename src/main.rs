@@ -1,15 +1,18 @@
 #[macro_use]
 extern crate glium;
 use std::fs;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Instant;
 
 use cgmath::Rotation3;
+use cgmath::{Deg, Quaternion, Vector3};
 use crossbeam::channel::unbounded;
 use glium::IndexBuffer;
 use glium::Surface;
 use glium::VertexBuffer;
+use glium::winit::event_loop::ControlFlow;
 use glium::winit::event_loop::EventLoop;
-
-use cgmath::{Deg, Quaternion, Vector3};
 
 mod camera;
 mod drawing;
@@ -28,8 +31,18 @@ use threading::PhysicsMessage;
 
 #[allow(deprecated)]
 fn main() {
+    let running = Arc::new(AtomicBool::new(true));
+    let run_setter = running.clone();
+
+    ctrlc::set_handler(move || {
+        run_setter.store(false, Ordering::SeqCst);
+    })
+    .expect("Error Setting Exit handler");
+
     let event_loop = EventLoop::builder().build().unwrap();
-    let (window, display) = glium::backend::glutin::SimpleWindowBuilder::new().build(&event_loop);
+    let (window, display) = glium::backend::glutin::SimpleWindowBuilder::new()
+        .with_vsync(false)
+        .build(&event_loop);
 
     let (tx, rx) = unbounded::<PhysicsMessage>();
 
@@ -85,14 +98,30 @@ fn main() {
 
     let mut matrix = camera::camera_matrix(cam.pos, cam.ori, cam.fov, cam.ar, 0.1, 100.0);
 
+    let mut l_t = Instant::now();
+
+    let physics_run = running.clone();
+
+    let physics_thread = std::thread::spawn(move || {
+        threading::phys_start(physics_run, tx);
+    });
+
     let _ = event_loop.run(move |event, window_target| {
+        if !running.load(Ordering::SeqCst) {
+            window_target.exit();
+        }
+
+        window_target.set_control_flow(ControlFlow::Poll);
+
         events::handle(
+            &mut l_t,
             event,
             window_target,
             &window,
             &display,
             &mut cam,
             &rx,
+            &running,
             |ins_buffer| {
                 drawing::draw_shape(
                     &display,
@@ -107,4 +136,5 @@ fn main() {
 
         matrix = camera::camera_matrix(cam.pos, cam.ori, cam.fov, cam.ar, 0.1, 100.0);
     });
+    physics_thread.join().unwrap();
 }

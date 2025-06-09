@@ -1,8 +1,6 @@
-// In a new module or file, e.g., `src/physics_object.rs`
 use crate::mesh::generate_icosphere_mesh;
-use crate::vx;
 use crate::vx::Vx;
-use cgmath::{Array, Quaternion, Vector3, Zero}; // Assuming you're using `glam` for vectors/quaternions
+use cgmath::Vector3;
 
 #[derive(Clone, Debug)]
 pub struct Particle {
@@ -58,10 +56,8 @@ macro_rules! part {
 pub struct PhysicsWorld {
     pub particles: Vec<Particle>,
     pub gravity: Vector3<f32>,
-    // Store the base sphere mesh
     base_sphere_vertices: Vec<Vx>,
     base_sphere_indices: Vec<u16>,
-    // Store the offset for indices when combining meshes
     sphere_vertex_count: u32,
     sphere_index_count: u32,
 }
