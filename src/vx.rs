@@ -1,3 +1,5 @@
+use glium::implement_vertex;
+
 #[derive(Copy, Clone)]
 pub struct Vx {
     pub pos: [f32; 3],

@@ -1,6 +1,6 @@
 use glium::{
     DrawParameters, IndexBuffer, Program, Surface, VertexBuffer, glutin::surface::WindowSurface,
-    vertex::PerInstance,
+    uniform, vertex::PerInstance,
 };
 
 use crate::{mat::Mat4, vx::Vx};
@@ -8,7 +8,10 @@ use crate::{mat::Mat4, vx::Vx};
 #[macro_export]
 macro_rules! glsl {
     ($shader:literal) => {
-        fs::read_to_string("shaders/".to_owned() + $shader + ".glsl").unwrap()
+        match fs::read_to_string("shaders/".to_owned() + $shader + ".glsl") {
+            Ok(s) => s,
+            Err(e) => panic!("Unable to read file: shaders/{:}.glsl: {:?}", $shader, e),
+        }
     };
 }
 
@@ -24,8 +27,6 @@ pub fn draw_shape(
 
     target.clear_color_and_depth((0.0 / 255.0, 120.0 / 255.0, 140.0 / 255.0, 1.0), 1.0);
 
-    // let instances = instance_buffer.per_instance().unwrap();
-
     match target.draw(
         vi_buf,
         indices,
@@ -37,9 +38,12 @@ pub fn draw_shape(
     ) {
         Ok(_) => {}
         Err(e) => {
-            dbg!(e);
+            println!("Error drawing: {:?}", e);
         }
     };
 
-    target.finish().unwrap();
+    match target.finish() {
+        Ok(_) => {}
+        Err(e) => println!("Failed to draw: {:?}", e),
+    };
 }

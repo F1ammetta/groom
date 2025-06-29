@@ -7,6 +7,7 @@ use crate::mat::Mat4;
 pub struct CamParams {
     pub pos: Vector3<f32>,
     pub ori: Quaternion<f32>,
+    pub last_c_pos: (f64, f64),
     pub fov: f32,
     pub ar: f32,
 }

@@ -15,7 +15,7 @@ uniform mat4 matrix;
 void main() {
     // Transform the base vertex position for this instance
     vec3 world_pos = pos * i_radius + i_pos;
-    
+
     v_color = i_color;
     gl_Position = matrix * vec4(world_pos, 1.0);
 }

@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate glium;
 use std::fs;
 use std::sync::Arc;
@@ -44,6 +43,9 @@ fn main() {
         .with_vsync(false)
         .build(&event_loop);
 
+    let _ = window.set_cursor_grab(glium::winit::window::CursorGrabMode::Confined);
+    window.set_cursor_visible(false);
+
     let (tx, rx) = unbounded::<PhysicsMessage>();
 
     let vertex_shader = glsl!("vertex");
@@ -54,17 +56,23 @@ fn main() {
     let (base_vertices, base_indices) = world.get_base_mesh();
 
     // Create base mesh buffers (do this once)
-    let v_buf = VertexBuffer::new(&display, base_vertices).unwrap();
-    let i_buf = IndexBuffer::new(
+    let Ok(v_buf) = VertexBuffer::new(&display, base_vertices) else {
+        panic!("Failed to create vertex buffer for base sphere mesh");
+    };
+    let Ok(i_buf) = IndexBuffer::new(
         &display,
         glium::index::PrimitiveType::TrianglesList,
         base_indices,
-    )
-    .unwrap();
+    ) else {
+        panic!("Failed to create index buffer for base sphere mesh");
+    };
 
     let mut target = display.draw();
     target.clear_color_and_depth((0.0, 0.0, 0.0, 1.0), 1.0);
-    target.finish().unwrap();
+    match target.finish() {
+        Ok(_) => {}
+        Err(e) => println!("Failed to draw: {:?}", e),
+    };
 
     let draw_params = glium::DrawParameters {
         polygon_mode: glium::PolygonMode::Fill,
@@ -77,11 +85,13 @@ fn main() {
         ..Default::default()
     };
 
-    let program =
-        glium::Program::from_source(&display, &vertex_shader, &fragment_shader, None).unwrap();
+    let Ok(program) = glium::Program::from_source(&display, &vertex_shader, &fragment_shader, None)
+    else {
+        panic!("Unable to parse shaders");
+    };
 
-    let position = Vector3::new(0.0, 0.0, 2.0);
-    let orientation = Quaternion::from_angle_y(Deg(180.0)); // Looking backward
+    let position = Vector3::new(0.0, 0.0, 0.0);
+    let orientation = Quaternion::from_angle_y(Deg(-90.0)); // Looking backward
 
     let fov = 60.0;
 
@@ -92,6 +102,7 @@ fn main() {
     let mut cam = CamParams {
         pos: position,
         ori: orientation,
+        last_c_pos: (0.0, 0.0),
         fov: fov,
         ar: ar,
     };
@@ -134,7 +145,10 @@ fn main() {
             },
         );
 
-        matrix = camera::camera_matrix(cam.pos, cam.ori, cam.fov, cam.ar, 0.1, 100.0);
+        matrix = camera::camera_matrix(cam.pos, cam.ori, cam.fov, cam.ar, 0.1, 10000.0);
     });
-    physics_thread.join().unwrap();
+    match physics_thread.join() {
+        Ok(_) => {}
+        Err(e) => panic!("Physics thread paniced with error: {:?}", e),
+    };
 }
